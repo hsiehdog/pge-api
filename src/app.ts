@@ -1,9 +1,25 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import routes from "./web/routes";
 import { logger } from "./web/middleware/logger";
 
 const app = express();
+
+// Security middleware - set various HTTP headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // CORS middleware - enable cross-origin requests
 app.use(

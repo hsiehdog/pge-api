@@ -277,6 +277,45 @@ app.use(logger);
 
 Add your own middleware in `src/web/middleware/` and register it in `app.ts` as needed.
 
+### Security with Helmet
+
+The API uses Helmet middleware to enhance security by setting various HTTP headers that help protect against common vulnerabilities.
+
+**Security Headers Applied:**
+
+- **Content Security Policy (CSP)**: Prevents XSS attacks by controlling resource loading
+- **X-Frame-Options**: Prevents clickjacking attacks
+- **X-Content-Type-Options**: Prevents MIME type sniffing
+- **X-XSS-Protection**: Enables browser's XSS filtering
+- **Strict-Transport-Security**: Enforces HTTPS connections
+- **Referrer-Policy**: Controls referrer information
+
+**Configuration:**
+
+```typescript
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+```
+
+**Benefits:**
+
+- **XSS Protection**: Content Security Policy prevents cross-site scripting
+- **Clickjacking Protection**: X-Frame-Options prevents iframe-based attacks
+- **MIME Sniffing Protection**: Prevents browsers from guessing content types
+- **HTTPS Enforcement**: HSTS headers encourage secure connections
+- **Information Disclosure Prevention**: Limits referrer information leakage
+
 ### CORS Configuration
 
 The API includes CORS (Cross-Origin Resource Sharing) middleware to allow cross-origin requests from web applications.
