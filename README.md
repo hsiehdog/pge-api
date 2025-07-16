@@ -91,22 +91,50 @@ The API uses automatic route discovery to eliminate the need for manual route re
    npm install
    ```
 
-2. Build the project:
+2. Set up environment variables:
+
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. Build the project:
 
    ```bash
    npm run build
    ```
 
-3. Start the server:
+4. Start the server:
 
    ```bash
    npm start
    ```
 
-4. For development (with auto-reload):
+5. For development (with auto-reload):
    ```bash
    npm run dev
    ```
+
+## Environment Variables
+
+The API uses environment variables for configuration. Copy `.env.example` to `.env` and customize as needed:
+
+```bash
+# Server Configuration
+PORT=3000
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+
+# Environment
+NODE_ENV=development
+```
+
+**Available Variables:**
+
+- `PORT`: Server port (default: 3000)
+- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins
+- `NODE_ENV`: Environment mode (development, production, test)
 
 ## API Endpoints
 
@@ -248,3 +276,32 @@ app.use(logger);
 - Modify requests or responses
 
 Add your own middleware in `src/web/middleware/` and register it in `app.ts` as needed.
+
+### CORS Configuration
+
+The API includes CORS (Cross-Origin Resource Sharing) middleware to allow cross-origin requests from web applications.
+
+**Configuration:**
+
+- **Allowed Origins**: `http://localhost:3000`, `http://localhost:3001` (configurable via `ALLOWED_ORIGINS` environment variable)
+- **Credentials**: Enabled for authenticated requests
+- **Methods**: GET, POST, PUT, DELETE, PATCH, OPTIONS
+- **Headers**: Content-Type, Authorization, X-Requested-With
+
+**Environment Variable:**
+
+```bash
+ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+```
+
+**Usage in Frontend:**
+
+```javascript
+fetch("http://localhost:3000/api/endpoint", {
+  method: "GET",
+  credentials: "include", // For authenticated requests
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+```
