@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "import-electric-data": "ts-node scripts/import-electric-data.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
