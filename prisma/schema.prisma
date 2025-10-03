@@ -1,0 +1,22 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EnergyUsage {
+  id                    Int      @id @default(autoincrement())
+  usage_hour            DateTime @unique @db.Timestamp(0)
+  import_kilowatt_hours Decimal  @db.Decimal(10, 2)
+  export_kilowatt_hours Decimal  @db.Decimal(10, 2)
+  actual_cost           Decimal  @db.Decimal(10, 2)
+  created_at            DateTime @default(now())
+
+  @@map("energy_usage")
+}
