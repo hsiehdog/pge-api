@@ -8,10 +8,15 @@ const router = Router();
 const routesDir = __dirname;
 const routeFiles = fs
   .readdirSync(routesDir)
-  .filter((file) => file.endsWith(".ts") && file !== "index.ts");
+  .filter(
+    (file) =>
+      (file.endsWith(".ts") || file.endsWith(".js")) &&
+      file !== "index.ts" &&
+      file !== "index.js"
+  );
 
 routeFiles.forEach((file) => {
-  const routeName = path.basename(file, ".ts");
+  const routeName = path.basename(file, path.extname(file));
   const routeModule = require(path.join(routesDir, file)).default;
 
   if (routeModule && typeof routeModule === "function") {
