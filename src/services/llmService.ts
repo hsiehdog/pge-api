@@ -39,6 +39,8 @@ Database context:
 - Each record represents hourly energy usage
 - Columns: usage_hour (timestamp), import_kilowatt_hours, export_kilowatt_hours, actual_cost
 
+Question: {QUESTION}
+
 Based on the query results, provide a comprehensive analysis and answer to the question. Include specific data points, calculations, and insights.`;
 
 const CALC_TOOL_DEFINITION = {
@@ -66,6 +68,15 @@ const CALC_TOOL_DEFINITION = {
   },
 };
 
+// Interfaces
+export interface LlmResult {
+  question: string;
+  answer: string;
+  sqlQuery: string;
+  dataPoints: number;
+  sampleData: any[];
+}
+
 // Helpers
 const cleanSql = (sql: string) =>
   sql
@@ -77,23 +88,6 @@ const callOpenAI = async (
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   tools?: any
 ) => {
-  // Log message lengths before API call
-  console.log(`📊 Message analysis:`);
-  messages.forEach((msg, index) => {
-    const content =
-      typeof msg.content === "string"
-        ? msg.content
-        : JSON.stringify(msg.content);
-    console.log(
-      `  Message ${index + 1} (${msg.role}): ${content.length} characters`
-    );
-  });
-
-  if (tools) {
-    const toolsStr = JSON.stringify(tools);
-    console.log(`  Tools: ${toolsStr.length} characters`);
-  }
-
   const completion = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages,
@@ -111,20 +105,8 @@ const callOpenAI = async (
   return completion;
 };
 
-export interface LlmResult {
-  question: string;
-  answer: string;
-  sqlQuery: string;
-  dataPoints: number;
-  sampleData: any[];
-}
-
 export class LlmService {
-  async processQuestion(question: string): Promise<LlmResult> {
-    console.log("🤖 Processing question:", question);
-    console.log("=".repeat(60));
-
-    // 1) Ask LLM to generate SQL
+  private async generateAndExecuteSQL(question: string) {
     console.log("📝 Step 1: Generating SQL query...");
     const sqlCompletion = await callOpenAI(
       [
@@ -139,7 +121,6 @@ export class LlmService {
 
     if (!sqlQuery) throw new Error("Empty SQL query from LLM");
 
-    // 2) Execute SQL (no fallback)
     console.log("🔍 Step 2: Executing SQL query...");
     let queryResults: any[] = [];
     try {
@@ -152,12 +133,19 @@ export class LlmService {
       throw new Error(`SQL query failed: ${sqlError}`);
     }
 
-    // 3) Ask LLM to analyze results (with calc tool)
-    console.log("🧠 Step 3: Analyzing results with LLM...");
-    const analysisPrompt = ANALYSIS_PROMPT.replace(
+    return { sqlQuery, queryResults };
+  }
+
+  private createAnalysisPrompt(question: string, queryResults: any[]): string {
+    return ANALYSIS_PROMPT.replace(
       "{QUERY_RESULTS}",
       JSON.stringify(queryResults, null, 2)
-    );
+    ).replace("{QUESTION}", question);
+  }
+
+  private async analyzeWithLLM(question: string, queryResults: any[]) {
+    console.log("🧠 Step 3: Analyzing results with LLM...");
+    const analysisPrompt = this.createAnalysisPrompt(question, queryResults);
 
     const analysisCompletion = await callOpenAI(
       [
@@ -170,13 +158,20 @@ export class LlmService {
       }
     );
 
-    // Handle tool calls if the LLM requests calculations
+    return analysisCompletion;
+  }
+
+  private async handleToolCalls(
+    analysisCompletion: any,
+    analysisPrompt: string,
+    question: string
+  ) {
     let finalAnswer = analysisCompletion.choices[0].message.content;
     const toolCalls = analysisCompletion.choices[0].message.tool_calls;
 
     if (toolCalls && toolCalls.length > 0) {
       console.log(`🔧 LLM requested ${toolCalls.length} calculation(s)`);
-      const toolResults = toolCalls.map((toolCall) => {
+      const toolResults = toolCalls.map((toolCall: any) => {
         if (toolCall.function.name !== "calc")
           return { tool_call_id: toolCall.id, error: "Unknown tool" };
         try {
@@ -192,7 +187,7 @@ export class LlmService {
         }
       });
 
-      const toolMessages = toolResults.map((r) => ({
+      const toolMessages = toolResults.map((r: any) => ({
         role: "tool" as const,
         tool_call_id: r.tool_call_id,
         content: JSON.stringify(r.result ?? r.error),
@@ -209,6 +204,27 @@ export class LlmService {
       finalAnswer = finalCompletion.choices[0].message.content;
     }
 
+    return finalAnswer;
+  }
+
+  async processQuestion(question: string): Promise<LlmResult> {
+    console.log("🤖 Processing question:", question);
+    console.log("=".repeat(60));
+
+    const { sqlQuery, queryResults } = await this.generateAndExecuteSQL(
+      question
+    );
+    const analysisCompletion = await this.analyzeWithLLM(
+      question,
+      queryResults
+    );
+    const analysisPrompt = this.createAnalysisPrompt(question, queryResults);
+    const finalAnswer = await this.handleToolCalls(
+      analysisCompletion,
+      analysisPrompt,
+      question
+    );
+
     console.log("✅ Processing complete!");
     console.log("=".repeat(60));
 
@@ -217,7 +233,7 @@ export class LlmService {
       answer: finalAnswer || "No answer generated",
       sqlQuery: sqlQuery,
       dataPoints: queryResults.length,
-      sampleData: queryResults.slice(0, 10), // Show first 10 results for reference
+      sampleData: queryResults.slice(0, 10),
     };
   }
 }
