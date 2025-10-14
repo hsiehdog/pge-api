@@ -1,346 +1,262 @@
-# Stablecoins API
+# PGE Energy API
 
-A TypeScript-based RESTful API built with Express using a three-layer architecture pattern.
+A Node.js API service that provides intelligent analysis of energy usage data through an LLM-powered `/llm/ask` endpoint.
 
-## Architecture
+## Overview
 
-This API follows a **three-layer architecture** pattern for better separation of concerns, maintainability, and testability:
+This API allows users to ask natural language questions about their energy usage data and receive intelligent responses powered by OpenAI's GPT-3.5-turbo model. The system can analyze hourly energy data, calculate costs, and provide insights about electricity consumption patterns.
 
-```
-┌─────────────────┐
-│   Web Layer     │  ← HTTP request/response handling
-│  (Routes,       │
-│   Controllers,  │
-│   Middleware)   │
-├─────────────────┤
-│ Service Layer   │  ← Business logic implementation
-├─────────────────┤
-│  Data Layer     │  ← Data access abstraction
-│   (Models)      │
-└─────────────────┘
-```
+## Features
 
-### Layer Responsibilities
+- **Natural Language Queries**: Ask questions about energy usage in plain English
+- **Intelligent Data Analysis**: AI-powered analysis of energy consumption patterns
+- **Cost Calculations**: Support for various electricity rate plans (flat rate, time-of-use)
+- **Flexible Date Ranges**: Query data by hour, day, month, or custom date ranges
+- **Multiple Metrics**: Analyze usage, import, export, and cost data
 
-#### 1. **Web Layer** (`src/web/`)
+## API Endpoints
 
-- **Routes** (`src/web/routes/`): Defines API endpoints and HTTP methods
-- **Controllers** (`src/web/controllers/`): Handles HTTP requests and responses
-- **Middleware** (`src/web/middleware/`): Request processing and validation
+### POST `/llm/ask`
 
-#### 2. **Service Layer** (`src/services/`)
+Ask natural language questions about energy usage data.
 
-- Contains core business logic
-- Coordinates between controllers and models
-- Handles data transformation and business rules
-- Manages transactions and complex operations
+**Request Body:**
 
-#### 3. **Data Layer** (`src/data/`)
-
-- **Models** (`src/data/models/`): Abstracts data access operations
-- Handles database interactions
-- Provides data persistence logic
-- Manages data models and queries
-
-### Data Flow
-
-```
-HTTP Request → Route → Controller → Service → Model → Database
-Database → Model → Service → Controller → Route → HTTP Response
+```json
+{
+  "question": "What was my total electricity usage last month?"
+}
 ```
 
-### Project Structure
+**Response:**
 
-```
-src/
-├── web/                 # Web layer (HTTP handling)
-│   ├── routes/         # API route definitions
-│   │   ├── index.ts    # Automatic route discovery
-│   │   ├── health.ts
-│   │   ├── example.ts
-│   │   └── users.ts
-│   ├── controllers/    # HTTP request/response handlers
-│   │   ├── healthController.ts
-│   │   └── exampleController.ts
-│   └── middleware/     # Request processing middleware
-├── services/           # Business logic layer
-│   └── exampleService.ts
-├── data/              # Data access layer
-│   └── models/        # Data models and access logic
-│       └── exampleModel.ts
-├── app.ts             # Express app configuration
-└── index.ts           # Server entry point
+```json
+{
+  "question": "What was my total electricity usage last month?",
+  "answer": "Based on the data, your total electricity usage for last month was 1,250 kWh..."
+}
 ```
 
-### Automatic Route Discovery
+## Supported Question Types
 
-The API uses automatic route discovery to eliminate the need for manual route registration. Simply create a new route file in `src/web/routes/` and it will be automatically registered when the server starts.
+### Energy Usage Analysis
 
-**How it works:**
+- "What was my total electricity usage last month?"
+- "How much energy did I use yesterday?"
+- "Show me my daily usage for the past week"
 
-- `src/web/routes/index.ts` scans the routes directory
-- All `.ts` files (except `index.ts`) are automatically discovered
-- Route files are mounted at `/{filename}` (e.g., `users.ts` → `/users`)
-- No need to manually import or register routes in `app.ts`
+### Cost Analysis
 
-## Setup
+- "What was my electricity bill for July?"
+- "Calculate the cost if I switch to a flat rate plan at $0.35/kWh"
+- "How much would I save with a time-of-use plan?"
 
-1. Install dependencies:
+### Time-Based Queries
 
+- "What was my peak usage hour today?"
+- "Show me my usage pattern for weekdays vs weekends"
+- "What's my average usage during summer months?"
+
+### Comparative Analysis
+
+- "Compare my usage this month to last month"
+- "How does my weekend usage compare to weekdays?"
+- "What's the difference between my import and export?"
+
+## Data Schema
+
+The system analyzes data from the `energy_usage` table with the following structure:
+
+```sql
+energy_usage(
+  usage_hour TIMESTAMP,           -- Hour of usage
+  import_kilowatt_hours FLOAT,   -- Energy imported from grid
+  export_kilowatt_hours FLOAT,   -- Energy exported to grid
+  actual_cost FLOAT              -- Actual cost for that hour
+)
+```
+
+## Available Tools
+
+The LLM has access to several specialized tools for data analysis:
+
+### `energyTotals`
+
+Calculates total usage, import, export, or actual cost for a given time window.
+
+**Parameters:**
+
+- `metric`: "usage", "import", "export", or "actual_cost"
+- `date`: Specific date (optional)
+- `bucket`: "hour", "day", or "month" (optional)
+- `from`/`to`: Date range (optional)
+
+### `planCost`
+
+Simulates electricity costs for different rate plans.
+
+**Parameters:**
+
+- `plan`: Rate plan configuration (flat or time-of-use)
+- `date`/`bucket`/`from`/`to`: Time window parameters
+
+### `monthlyImportExport`
+
+Gets monthly breakdown of import and export data.
+
+### `calc`
+
+Performs mathematical calculations (sum, average, min, max, percent change).
+
+## Rate Plan Support
+
+### Flat Rate Plans
+
+Simple plans with a single rate for all hours:
+
+```json
+{
+  "type": "flat",
+  "rateImport": 0.35,
+  "rateExport": -0.1,
+  "currency": "USD"
+}
+```
+
+### Time-of-Use (TOU) Plans
+
+Complex plans with different rates for different time periods:
+
+```json
+{
+  "type": "tou",
+  "timezone": "America/Los_Angeles",
+  "periods": [
+    {
+      "name": "Off-Peak",
+      "rateImport": 0.25,
+      "rateExport": -0.08,
+      "hours": [0, 6],
+      "daysOfWeek": [0, 1, 2, 3, 4, 5, 6]
+    },
+    {
+      "name": "Peak",
+      "rateImport": 0.45,
+      "rateExport": -0.12,
+      "hours": [17, 20],
+      "daysOfWeek": [1, 2, 3, 4, 5]
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+### Basic Usage Query
+
+```bash
+curl -X POST http://localhost:3001/llm/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What was my total usage last week?"}'
+```
+
+### Cost Analysis Query
+
+```bash
+curl -X POST http://localhost:3001/llm/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Calculate my bill if I had a flat rate of $0.40/kWh for the past month"}'
+```
+
+### Time-of-Use Analysis
+
+```bash
+curl -X POST http://localhost:3001/llm/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What would my bill be with a TOU plan that charges $0.30/kWh off-peak and $0.50/kWh during peak hours (5-8 PM weekdays)?"}'
+```
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
    ```bash
    npm install
    ```
-
-2. Set up environment variables:
-
+3. Set up environment variables:
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
-
-3. Build the project:
-
+4. Set up the database:
    ```bash
-   npm run build
+   npx prisma migrate dev
+   npx prisma generate
    ```
-
-4. Start the server:
-
+5. Start the server:
    ```bash
    npm start
    ```
 
-5. For development (with auto-reload):
-   ```bash
-   npm run dev
-   ```
-
 ## Environment Variables
 
-The API uses environment variables for configuration. Copy `.env.example` to `.env` and customize as needed:
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `DATABASE_URL`: PostgreSQL connection string
+- `PORT`: Server port (default: 3001)
 
-```bash
-# Server Configuration
-PORT=3000
+## Dependencies
 
-# CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+- **AI SDK**: `@ai-sdk/openai`, `ai` - For LLM integration
+- **Database**: Prisma ORM with PostgreSQL
+- **Math**: `decimal.js` for precise calculations
+- **Dates**: `date-fns-tz` for timezone handling
 
-# Environment
-NODE_ENV=development
+## Architecture
+
+```
+src/
+├── services/
+│   └── llmService.ts          # Core LLM service
+├── tools/                     # AI tools for data analysis
+│   ├── energyTotals.ts       # Energy usage calculations
+│   ├── planCost.ts           # Rate plan cost simulation
+│   ├── monthlyImportExport.ts # Monthly data analysis
+│   └── calc.ts               # Mathematical operations
+├── lib/                      # Utility libraries
+│   ├── plan.ts              # Rate plan schemas
+│   ├── window.ts            # Date/time window handling
+│   └── math.ts              # Mathematical utilities
+└── web/
+    ├── controllers/
+    │   └── llmController.ts  # LLM endpoint controller
+    └── routes/
+        └── llm.ts           # LLM route definition
 ```
 
-**Available Variables:**
+## Error Handling
 
-- `PORT`: Server port (default: 3000)
-- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins
-- `NODE_ENV`: Environment mode (development, production, test)
+The API includes comprehensive error handling:
 
-## API Endpoints
+- **400 Bad Request**: Missing or invalid question
+- **500 Internal Server Error**: LLM processing errors
+- **Database Errors**: Connection or query failures
+- **Tool Errors**: Invalid parameters or calculation errors
 
-- `GET /health` — Health check endpoint
-- `GET /example` — Example endpoint demonstrating the three-layer architecture
-- `GET /users` — Users endpoint (demonstrates automatic route discovery)
-- `GET /users/:id` — User details endpoint with parameter
+## Performance
 
-## Development
+- **Response Time**: Typically 2-5 seconds for complex queries
+- **Rate Limiting**: Respects OpenAI API rate limits
+- **Caching**: Database queries are optimized for performance
+- **Memory**: Efficient handling of large datasets
 
-### Adding New Features
+## Contributing
 
-1. **Create a Model** (if needed):
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-   ```typescript
-   // src/data/models/newFeatureModel.ts
-   export interface NewFeatureData {
-     id: string;
-     name: string;
-   }
+## License
 
-   export class NewFeatureModel {
-     public async getData(): Promise<NewFeatureData[]> {
-       // Data access logic
-       return [];
-     }
-   }
-   ```
-
-2. **Create a Service**:
-
-   ```typescript
-   // src/services/newFeatureService.ts
-   import { NewFeatureModel } from "../data/models/newFeatureModel";
-
-   export class NewFeatureService {
-     private model = new NewFeatureModel();
-
-     public async processData(): Promise<any> {
-       // Business logic
-       return await this.model.getData();
-     }
-   }
-   ```
-
-3. **Create a Controller**:
-
-   ```typescript
-   // src/web/controllers/newFeatureController.ts
-   import { Request, Response } from "express";
-   import { NewFeatureService } from "../../services/newFeatureService";
-
-   export class NewFeatureController {
-     private static service = new NewFeatureService();
-
-     public static async handleRequest(
-       req: Request,
-       res: Response
-     ): Promise<void> {
-       try {
-         const result = await NewFeatureController.service.processData();
-         res.json(result);
-       } catch (error) {
-         res.status(500).json({ error: "Internal server error" });
-       }
-     }
-   }
-   ```
-
-4. **Create a Route**:
-
-   ```typescript
-   // src/web/routes/newFeature.ts
-   import { Router } from "express";
-   import { NewFeatureController } from "../controllers/newFeatureController";
-
-   const router = Router();
-   router.get("/", NewFeatureController.handleRequest);
-   export default router;
-   ```
-
-5. **Route Registration**: Routes are automatically discovered and registered! No need to manually add them to `app.ts`.
-
-**Note**: The server will automatically pick up new route files when restarted.
-
-## Benefits
-
-- **Separation of Concerns**: Each layer has a specific responsibility
-- **Testability**: Each layer can be tested independently
-- **Maintainability**: Changes in one layer don't affect others
-- **Scalability**: Easy to add new features or modify existing ones
-- **Reusability**: Services and repositories can be reused across different controllers
-
-### Middleware Example
-
-Middleware functions in Express are functions that have access to the request and response objects, and the next function in the application’s request-response cycle. They are commonly used for logging, authentication, validation, error handling, and more.
-
-**Example: Logging Middleware**
-
-The API includes a logger middleware (`src/web/middleware/logger.ts`) that logs each HTTP request and its response time:
-
-```typescript
-import { Request, Response, NextFunction } from "express";
-
-export const logger = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const start = Date.now();
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  const originalEnd = res.end;
-  res.end = function (chunk?: any, encoding?: any): any {
-    const duration = Date.now() - start;
-    console.log(
-      `[${new Date().toISOString()}] ${req.method} ${req.url} - ${
-        res.statusCode
-      } (${duration}ms)`
-    );
-    return originalEnd.call(this, chunk, encoding);
-  };
-  next();
-};
-```
-
-This middleware is applied globally in `app.ts`:
-
-```typescript
-import { logger } from "./web/middleware/logger";
-app.use(logger);
-```
-
-**What middleware can do:**
-
-- Log requests and responses
-- Authenticate or authorize users
-- Validate request data
-- Handle errors globally
-- Modify requests or responses
-
-Add your own middleware in `src/web/middleware/` and register it in `app.ts` as needed.
-
-### Security with Helmet
-
-The API uses Helmet middleware to enhance security by setting various HTTP headers that help protect against common vulnerabilities.
-
-**Security Headers Applied:**
-
-- **Content Security Policy (CSP)**: Prevents XSS attacks by controlling resource loading
-- **X-Frame-Options**: Prevents clickjacking attacks
-- **X-Content-Type-Options**: Prevents MIME type sniffing
-- **X-XSS-Protection**: Enables browser's XSS filtering
-- **Strict-Transport-Security**: Enforces HTTPS connections
-- **Referrer-Policy**: Controls referrer information
-
-**Configuration:**
-
-```typescript
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-  })
-);
-```
-
-**Benefits:**
-
-- **XSS Protection**: Content Security Policy prevents cross-site scripting
-- **Clickjacking Protection**: X-Frame-Options prevents iframe-based attacks
-- **MIME Sniffing Protection**: Prevents browsers from guessing content types
-- **HTTPS Enforcement**: HSTS headers encourage secure connections
-- **Information Disclosure Prevention**: Limits referrer information leakage
-
-### CORS Configuration
-
-The API includes CORS (Cross-Origin Resource Sharing) middleware to allow cross-origin requests from web applications.
-
-**Configuration:**
-
-- **Allowed Origins**: `http://localhost:3000`, `http://localhost:3001` (configurable via `ALLOWED_ORIGINS` environment variable)
-- **Credentials**: Enabled for authenticated requests
-- **Methods**: GET, POST, PUT, DELETE, PATCH, OPTIONS
-- **Headers**: Content-Type, Authorization, X-Requested-With
-
-**Environment Variable:**
-
-```bash
-ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
-```
-
-**Usage in Frontend:**
-
-```javascript
-fetch("http://localhost:3000/api/endpoint", {
-  method: "GET",
-  credentials: "include", // For authenticated requests
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-```
+MIT License - see LICENSE file for details.

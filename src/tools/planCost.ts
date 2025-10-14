@@ -67,10 +67,6 @@ function compressHoursToRanges(hours: number[]): Array<[number, number]> {
 }
 
 function normalizePlan(loose: LoosePlan) {
-  console.log("normalizePlan top");
-  console.log(loose);
-  console.log("loose.periods");
-  console.log(loose.periods);
   const type = String(loose.type || "").toLowerCase(); // accept "TOU"/"FLAT"
   const timezone = loose.timezone ?? "America/Los_Angeles";
   const currency = loose.currency ?? "USD";
@@ -83,8 +79,6 @@ function normalizePlan(loose: LoosePlan) {
     (type === "tou" && (!loose.periods || loose.periods.length === 0))
   ) {
     const rateImport = loose.rateImport;
-    console.log("rateImport");
-    console.log(rateImport);
     if (typeof rateImport !== "number") {
       throw new Error(
         "Flat plan requires `rateImport` (or provide TOU periods)."
@@ -114,8 +108,6 @@ function normalizePlan(loose: LoosePlan) {
     hours: [number, number];
     daysOfWeek: number[];
   }> = [];
-  console.log("normalizePlan");
-  console.log(loose.periods);
   for (const p of loose.periods ?? []) {
     const exportRate =
       typeof p.rateExport === "number" ? p.rateExport : -p.rateImport;
@@ -178,8 +170,6 @@ export const planCost = tool({
       WHERE usage_hour >= ${f} AND usage_hour < ${t}
       ORDER BY usage_hour
     `);
-    process.stdout.write("🔍 planCost: Processing hours data\n");
-    process.stdout.write(`📊 planCost: Found ${hours.length} hours\n`);
     let cost = 0;
     const defaultExportRate = (maybe: number | undefined, importRate: number) =>
       typeof maybe === "number" ? maybe : -importRate;
@@ -189,9 +179,6 @@ export const planCost = tool({
       const exp = kahanSum(hours.map((h) => h.export_kwh || 0));
       const exportRate = defaultExportRate(plan.rateExport, plan.rateImport);
       cost = imp * plan.rateImport + exp * exportRate;
-      process.stdout.write(
-        `💰 planCost: Flat plan - Import: ${imp}, Export: ${exp}, Cost: ${cost}\n`
-      );
     } else {
       for (const h of hours) {
         const p = periodForLocal(h.ts, plan.periods, "UTC");
@@ -199,14 +186,7 @@ export const planCost = tool({
           throw new Error(
             "No TOU period matched for an hour; verify timezone and coverage."
           );
-        process.stdout.write(`💰 planCost: TOU plan - Period: ${p.name}\n`);
         const exportRate = defaultExportRate(p.rateExport, p.rateImport);
-        process.stdout.write(
-          `💰 planCost: TOU plan - Import: ${h.import_kwh}, Export: ${h.export_kwh}\n`
-        );
-        process.stdout.write(
-          `💰 planCost: TOU plan - Rate Import: ${p.rateImport}, Rate Export: ${exportRate}\n`
-        );
         cost += (h.import_kwh || 0) * p.rateImport;
         cost += (h.export_kwh || 0) * exportRate;
       }

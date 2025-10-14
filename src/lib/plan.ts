@@ -101,15 +101,9 @@ export function periodForLocal(
   periods: z.infer<typeof TouPeriod>[],
   tz: string
 ) {
-  console.log("periodForLocal");
-  console.log(utcTs, tz);
   const local = toZonedTime(utcTs, tz);
   const hour = local.getHours(); // 0..23
   const dow = local.getDay(); // 0=Sun..6=Sat
-  //   console.log("periods");
-  //   console.log(periods);
-  //   console.log("hour, dow");
-  //   console.log(hour, dow);
   for (const p of periods) {
     const [start, end] = p.hours;
     if (p.daysOfWeek.includes(dow) && hour >= start && hour < end) {

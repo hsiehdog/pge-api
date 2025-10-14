@@ -59,7 +59,7 @@ export class LlmService {
       stopWhen: stepCountIs(4),
       tools,
     });
-    console.log("🔧 Result1:", result);
+    console.log("🔧 Result:", result);
     console.log(
       "tool calls:",
       result.steps.flatMap((step) => step.toolCalls)
