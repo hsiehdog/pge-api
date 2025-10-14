@@ -13,11 +13,11 @@
 // };
 
 import { energyTotals } from "./energyTotals";
-// import { planCost } from "./planCost";
+import { planCost } from "./planCost";
 import { monthlyImportExport } from "./monthlyImportExport";
 
 export const tools = {
   energyTotals,
-  // planCost,
+  planCost,
   monthlyImportExport,
 };
