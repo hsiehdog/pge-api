@@ -1,7 +1,17 @@
 import "dotenv/config";
+import { initLogger, wrapAISDK } from "braintrust";
 import { openai } from "@ai-sdk/openai";
-import { generateText, stepCountIs } from "ai";
+// import { generateText, stepCountIs } from "ai";
+import { stepCountIs } from "ai";
+import * as ai from "ai";
 import { tools } from "../tools";
+
+initLogger({
+  projectName: "Mike's Test",
+  apiKey: process.env.BRAINTRUST_API_KEY,
+});
+
+const { generateText } = wrapAISDK(ai);
 
 // Prompts
 // const SYSTEM_PROMPT = `
