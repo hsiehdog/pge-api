@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,10 +10,41 @@ datasource db {
 model EnergyUsage {
   id                    Int      @id @default(autoincrement())
   usage_hour            DateTime @unique @db.Timestamp(0)
-  import_kilowatt_hours Decimal  @db.Decimal(10, 2)
-  export_kilowatt_hours Decimal  @db.Decimal(10, 2)
-  actual_cost           Decimal  @db.Decimal(10, 2)
   created_at            DateTime @default(now())
+  actual_cost           Decimal  @db.Decimal(10, 2)
+  export_kilowatt_hours Decimal  @db.Decimal(10, 2)
+  import_kilowatt_hours Decimal  @db.Decimal(10, 2)
 
   @@map("energy_usage")
+}
+
+model Document {
+  id              Int             @id @default(autoincrement())
+  filename        String          @db.VarChar(255)
+  original_name   String          @db.VarChar(255)
+  file_size       Int
+  content         String
+  upload_date     DateTime        @default(now()) @db.Timestamp(0)
+  metadata        Json            @default("{}")
+  document_chunks DocumentChunk[]
+
+  @@index([filename], map: "idx_documents_filename")
+  @@index([upload_date], map: "idx_documents_uploadDate")
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id          Int                    @id @default(autoincrement())
+  document_id Int
+  chunk_index Int
+  content     String
+  embedding   Unsupported("vector(1536)")?
+  metadata    Json                   @default("{}")
+  created_at  DateTime               @default(now()) @db.Timestamp(0)
+  documents   Document               @relation(fields: [document_id], references: [id], onDelete: Cascade, map: "document_chunks_documentId_fkey")
+
+  @@index([chunk_index], map: "idx_chunks_chunkIndex")
+  @@index([document_id], map: "idx_chunks_documentId")
+  @@index([embedding], map: "idx_chunks_embedding_cosine")
+  @@map("document_chunks")
 }

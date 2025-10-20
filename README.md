@@ -37,6 +37,95 @@ Ask natural language questions about energy usage data.
 }
 ```
 
+## RAG (Retrieval-Augmented Generation) Endpoints
+
+### POST `/documents/upload`
+
+Upload and process PDF documents for RAG queries.
+
+**Request:** Multipart form data with PDF file
+
+- `pdf`: PDF file (max 10MB)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "document": {
+    "id": 1,
+    "filename": "uuid-filename.pdf",
+    "originalName": "document.pdf",
+    "fileSize": 1024000,
+    "uploadDate": "2024-01-15T10:30:00Z",
+    "metadata": {
+      "pages": 10,
+      "wordCount": 2500,
+      "charCount": 15000
+    }
+  },
+  "processing": {
+    "chunksCreated": 15,
+    "embeddingsGenerated": 15
+  }
+}
+```
+
+### GET `/documents`
+
+Get all uploaded documents.
+
+### GET `/documents/:id`
+
+Get specific document with chunks.
+
+### DELETE `/documents/:id`
+
+Delete document and all its chunks.
+
+### POST `/rag/query`
+
+Query documents using RAG (Retrieval-Augmented Generation).
+
+**Request Body:**
+
+```json
+{
+  "query": "What are the main topics discussed in the document?",
+  "limit": 5,
+  "documentId": 1
+}
+```
+
+**Response:**
+
+```json
+{
+  "query": "What are the main topics discussed in the document?",
+  "answer": "Based on the document content, the main topics include...",
+  "sources": [
+    {
+      "id": 1,
+      "content": "Relevant text chunk...",
+      "similarity": 0.85,
+      "document": {
+        "filename": "uuid-filename.pdf",
+        "originalName": "document.pdf"
+      },
+      "chunkIndex": 0
+    }
+  ],
+  "metadata": {
+    "totalSources": 3,
+    "avgSimilarity": 0.82
+  }
+}
+```
+
+### GET `/rag/stats`
+
+Get document and chunk statistics.
+
 ## Supported Question Types
 
 ### Energy Usage Analysis
